@@ -22,17 +22,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-volatile uint8_t newStatus = 0x00;
-volatile uint8_t lastStatus = 0x00;
-volatile uint8_t buf = 0x00;
-
-
-
 void Init_Clk(void);
 void Init_System(void);
 void Init_Key(void);
 
 uint8_t Read_Key1(void);
+uint8_t Read_Key2(void);
 
 void main(void)
 {
@@ -41,6 +36,7 @@ void main(void)
      // _EINT();                                        // 开总中断
       //__bis_SR_register(LPM3_bits);                   //进入LPM3
       P1OUT |= BIT0;
+      P8OUT |= BIT1;
       Init_Key();
       while(1)
       {
@@ -48,14 +44,12 @@ void main(void)
     	 {
     		 P1OUT ^= BIT0;
     	 }
-
-    	 for(i = 0;i<500;i++)
+    	 if(Read_Key2())
     	 {
-
+    		 P8OUT ^= BIT1;
     	 }
+
       }
-
-
 
 }
 
@@ -88,6 +82,8 @@ void  Init_System(void)
       WDTCTL = WDT_ADLY_1000;                         // WDT 250ms, ACLK,
       SFRIE1 |= WDTIE;                               // WDT 中断使能
       P1DIR |= BIT0;                                 // 设置P1。0为输出
+      P8DIR |= BIT1;                                 // 设置P2。7为输出,LED2
+
 }
 
 
@@ -124,9 +120,12 @@ void Init_Key(void)
 //	输入上拉
 	P1DIR|= (BIT7);
 	P1OUT |= (BIT7);
+
 	//P1REN |= BIT7;
 	//P1SEL &= ~(BIT7);
-	//P1DS  |= BIT7;
+	P1DS  |= BIT7;
+	P2DIR|= (BIT2);
+	P2OUT |= (BIT2);
 }
 
 
@@ -136,17 +135,49 @@ void Init_Key(void)
  */
 uint8_t Read_Key1(void)
 {
+	static  uint16_t buf = 0x0000;
+	static uint16_t newStatus = 0x0000;
+	static  uint16_t lastStatus = 0x0000;
+
 
 	buf <<= 1;
 	buf |= ( (P1IN & BIT7) ? 0x01 :0x00);
 
-	if((0x00 == buf) || (0xFF == buf))
+	if((0x0000 == buf) || (0xFFFF == buf))
 	{
 		lastStatus = newStatus;
 		newStatus = buf;
 	}
 
-	if((0xFF == lastStatus) && (0x00 == newStatus))
+	if((0x0000 == lastStatus) && (0xFFFF == newStatus))
+	{
+		return 0x01;
+	}
+	else
+	{
+		return 0x00;
+	}
+
+}
+
+
+uint8_t Read_Key2(void)
+{
+	static  uint16_t buf = 0x0000;
+	static uint16_t newStatus = 0x0000;
+	static  uint16_t lastStatus = 0x0000;
+
+
+	buf <<= 1;
+	buf |= ( (P2IN & BIT2) ? 0x01 :0x00);
+
+	if((0x0000 == buf) || (0xFFFF == buf))
+	{
+		lastStatus = newStatus;
+		newStatus = buf;
+	}
+
+	if((0x0000 == lastStatus) && (0xFFFF == newStatus))
 	{
 		return 0x01;
 	}
